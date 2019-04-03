@@ -12,7 +12,7 @@ use std::io::Write;
 pub fn serialize<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: Write,
-    T: Serialize,
+    T: ?Sized + Serialize,
 {
     let mut ser = Serializer::new(writer);
     Serialize::serialize(value, &mut ser)

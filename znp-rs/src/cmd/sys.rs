@@ -1,6 +1,5 @@
 use crate::sreq::Sreq;
-use crate::znp_codec::{Subsys, Type, ZpiCmd};
-use bytes::{BufMut, BytesMut};
+use crate::znp_codec::Subsys;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -16,15 +15,9 @@ pub struct StartTimerRsp {
 }
 impl Sreq for StartTimer {
     type Srsp = StartTimerRsp;
-    fn frame(&self) -> ZpiCmd {
-        let typ = Type::SREQ;
-        let subsys = Subsys::SYS;
-        let cmd_id = 0x0A;
-        let mut body = BytesMut::with_capacity(250);
-        let writer = (&mut body).writer();
-        crate::serde_znp::serialize(writer, self).unwrap();
-        ZpiCmd::new(typ, subsys, cmd_id, body)
-    }
+    const SUBSYS: Subsys = Subsys::SYS;
+    const CMD_ID: u8 = 0x0A;
+    const MAX_SIZE: usize = 3;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
