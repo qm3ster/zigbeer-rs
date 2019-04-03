@@ -208,7 +208,7 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut Deserializer<'de> {
             }
         }
 
-        let len = Deserialize::deserialize(&mut *self)?;
+        let len = self.bytes.read_u8()? as usize;
 
         visitor.visit_seq(SeqAccess {
             deserializer: self,
