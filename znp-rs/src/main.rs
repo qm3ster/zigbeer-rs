@@ -26,6 +26,16 @@ fn main() {
                 println!("{:x?}", res);
             }
 
+            use cmd::sys::NvRead;
+            let cmd = NvRead {
+                /// ZNP_HAS_CONFIGURED
+                id: 0x0F00,
+                offset: 0x00,
+            };
+            let res = await!(znp.sreq(cmd));
+            // Expecting [0x55]
+            println!("{:x?}", res);
+
             use cmd::sys::StartTimer;
             for timer_id in 0..=3 {
                 let cmd = StartTimer {
