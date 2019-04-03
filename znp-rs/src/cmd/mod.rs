@@ -14,7 +14,7 @@ impl Areq {
         use Subsys::*;
         match cmd.subsys() {
             SYS => Ok(Sys(sys::In::from_cmd(cmd)?)),
-            _ => Err(Error::Subsys(cmd.subsys())),
+            _ => Err(Error::mismatched(&cmd)),
         }
     }
 }

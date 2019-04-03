@@ -1,5 +1,6 @@
 use super::sreq::Sreq;
 use super::znp_codec;
+use crate::cmd;
 use futures::lock::Mutex;
 use std::path::Path;
 use tokio::prelude::*;
@@ -9,6 +10,12 @@ use znp_codec::{ZnpCodec, ZpiCmd};
 pub struct Znp {
     tx: Mutex<Option<tokio::prelude::stream::SplitSink<tokio::codec::Framed<Serial, ZnpCodec>>>>,
     cbs: mpsc::Sender<oneshot::Sender<ZpiCmd>>,
+}
+#[derive(Debug)]
+pub enum SreqError {
+    BadResponse(cmd::error::Error),
+    SerialPortGone,
+    IO(std::io::Error),
 }
 impl Znp {
     pub fn from_path<P>(path: P) -> Self
@@ -29,22 +36,27 @@ impl Znp {
                 let mut cbs_rx = cbs_rx;
                 let mut sp_rx = sp_rx;
                 while let Some(frame) = await!(sp_rx.next()) {
-                    let frame = frame.unwrap();
                     use znp_codec::Type::{AREQ, SRSP};
-                    match frame.typ() {
-                        SRSP => {
-                            if let Ok(Async::Ready(Some(cb))) = cbs_rx.poll() {
-                                cb.send(frame).unwrap();
-                            } else {
-                                eprintln!("Unexpected SRSP: {:?}", frame);
-                                panic!("SRSP no one was waiting for");
+                    match frame {
+                        Err(err) => {
+                            eprintln!("{}", err);
+                            break;
+                        }
+                        Ok(frame) => match frame.typ() {
+                            SRSP => {
+                                if let Ok(Async::Ready(Some(cb))) = cbs_rx.poll() {
+                                    cb.send(frame).unwrap();
+                                } else {
+                                    eprintln!("Unexpected SRSP: {:?}", frame);
+                                    panic!("SRSP no one was waiting for");
+                                }
                             }
-                        }
-                        AREQ => {
-                            use crate::cmd::Areq;
-                            println!("AREQ:{:?}", Areq::from_subsys(frame));
-                        }
-                        _ => panic!("incoming POLL or SREQ"),
+                            AREQ => {
+                                use crate::cmd::Areq;
+                                println!("AREQ:{:?}", Areq::from_subsys(frame));
+                            }
+                            _ => panic!("incoming POLL or SREQ"),
+                        },
                     }
                 }
             },
@@ -54,18 +66,24 @@ impl Znp {
             cbs: ctx,
         }
     }
-    pub async fn sreq<S>(&mut self, req: S) -> S::Srsp
+    pub async fn sreq<S>(&mut self, req: S) -> Result<S::Srsp, SreqError>
     where
         S: Sreq + 'static,
     {
+        // acquire writing rights
         let mut tx_lock = await!(self.tx.lock());
-        let send = tx_lock.take().unwrap().send(req.frame());
+        // serial port can be gone if there has been an IO error before
+        let sp_tx = tx_lock.take().ok_or_else(|| SreqError::SerialPortGone)?;
+        let send = sp_tx.send(req.frame());
         let (cb_tx, cb_rx) = oneshot::channel();
-        await!(self.cbs.clone().send(cb_tx)).unwrap();
-        let sp_tx = await!(send).unwrap();
-        let srsp = await!(cb_rx).unwrap();
-        let srsp = S::parse_res(srsp);
+        let register_callback = await!(self.cbs.clone().send(cb_tx));
+        register_callback.map_err(|_| SreqError::SerialPortGone)?;
+        let send_res = await!(send);
+        let sp_tx = send_res.map_err(|err| SreqError::IO(err))?;
+        let srsp = await!(cb_rx).map_err(|_| SreqError::SerialPortGone)?;
+        let srsp = S::parse_res(srsp)
+            .map_err(|err| SreqError::BadResponse(cmd::error::Error::from(err)))?;
         *tx_lock = Some(sp_tx);
-        srsp
+        Ok(srsp)
     }
 }

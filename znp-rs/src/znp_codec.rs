@@ -99,8 +99,10 @@ impl Decoder for ZnpCodec {
         // Drop: FCS
         frame.truncate(frame.len() - 1);
         let cmd0 = frame[1];
-        let typ = Type::from_u8(cmd0 & 0xf0).unwrap();
-        let subsys = Subsys::from_u8(cmd0 & 0xf).unwrap();
+        let typ = Type::from_u8(cmd0 & 0xf0)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Unknown Type"))?;
+        let subsys = Subsys::from_u8(cmd0 & 0xf)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Unknown Subsystem"))?;
         let cmd_id = frame[2];
         // Skip: Length + Cmd0 + Cmd1
         frame.advance(3);

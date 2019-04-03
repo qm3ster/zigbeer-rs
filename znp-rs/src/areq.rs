@@ -1,11 +1,12 @@
+use crate::cmd::error::Result;
 use crate::znp_codec::{Subsys, Type, ZpiCmd};
 use bytes::{BufMut, BytesMut};
 use serde::{de::DeserializeOwned, Serialize};
 pub trait AreqIn: DeserializeOwned {
     const SUBSYS: Subsys;
     const CMD_ID: u8;
-    fn parse(res: ZpiCmd) -> Self {
-        res.parse().unwrap()
+    fn parse(res: ZpiCmd) -> Result<Self> {
+        res.parse().map_err(From::from)
     }
 }
 pub trait AreqOut: Serialize {

@@ -39,7 +39,7 @@ impl In {
     pub fn from_cmd(cmd: ZpiCmd) -> Result<Self> {
         match cmd.cmd_id() {
             TimerExpired::CMD_ID => Ok(In::TimerExpired(cmd.parse()?)),
-            _ => Err(Error::CmdId(cmd.cmd_id())),
+            _ => Err(Error::unimplemented(&cmd)),
         }
     }
 }

@@ -1,3 +1,4 @@
+use crate::cmd::error::Result;
 use crate::znp_codec::{Subsys, Type, ZpiCmd};
 use bytes::{BufMut, BytesMut};
 use serde::{de::DeserializeOwned, Serialize};
@@ -13,7 +14,7 @@ pub trait Sreq: Serialize {
         crate::serde_znp::serialize(writer, self).unwrap();
         ZpiCmd::new(Type::SREQ, Self::SUBSYS, Self::CMD_ID, body)
     }
-    fn parse_res(res: ZpiCmd) -> Self::Srsp {
-        res.parse().unwrap()
+    fn parse_res(res: ZpiCmd) -> Result<Self::Srsp> {
+        res.parse().map_err(From::from)
     }
 }
