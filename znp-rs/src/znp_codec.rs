@@ -34,7 +34,7 @@ pub enum Subsys {
 }
 #[derive(Debug)]
 pub struct ZpiCmd {
-    typ: Type,
+    pub typ: Type,
     subsys: Subsys,
     cmd_id: u8,
     body: BytesMut,

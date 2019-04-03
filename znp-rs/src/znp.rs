@@ -22,23 +22,28 @@ impl Znp {
         let sp = Serial::from_path(path, &sp_settings).unwrap();
         let sp = tokio::codec::Framed::new(sp, ZnpCodec);
         type Callback = oneshot::Sender<ZpiCmd>;
-        let (ctx, crx) = mpsc::channel::<Callback>(1);
-        let (stx, srx) = sp.split();
+        let (ctx, cbs_rx) = mpsc::channel::<Callback>(1);
+        let (stx, sp_rx) = sp.split();
         tokio::spawn_async(
             async {
-                let mut crx = crx;
-                let mut srx = srx;
-                let mut cb: Option<Callback> = None;
-                while let Some(frame) = await!(srx.next()) {
-                    if cb.is_none() {
-                        if let Ok(Async::Ready(new_cb)) = crx.poll() {
-                            cb = new_cb;
+                let mut cbs_rx = cbs_rx;
+                let mut sp_rx = sp_rx;
+                while let Some(frame) = await!(sp_rx.next()) {
+                    let frame = frame.unwrap();
+                    use znp_codec::Type::{AREQ, SRSP};
+                    match frame.typ {
+                        SRSP => {
+                            if let Ok(Async::Ready(Some(cb))) = cbs_rx.poll() {
+                                cb.send(frame).unwrap();
+                            } else {
+                                eprintln!("Unexpected SRSP: {:?}", frame);
+                                panic!("SRSP no one was waiting for");
+                            }
                         }
-                    }
-                    if cb.is_some() {
-                        cb.take().unwrap().send(frame.unwrap()).unwrap();
-                    } else {
-                        // println!("{:?}", &frame);
+                        AREQ => {
+                            println!("AREQ:{:?}", &frame);
+                        }
+                        _ => panic!("incoming POLL or SREQ"),
                     }
                 }
             },
@@ -54,12 +59,12 @@ impl Znp {
     {
         let mut tx_lock = await!(self.tx.lock());
         let send = tx_lock.take().unwrap().send(req.frame());
-        let (crx, ctx) = oneshot::channel();
-        await!(self.cbs.clone().send(crx)).unwrap();
-        let tx = await!(send).unwrap();
-        let srsp = await!(ctx).unwrap();
+        let (cb_tx, cb_rx) = oneshot::channel();
+        await!(self.cbs.clone().send(cb_tx)).unwrap();
+        let sp_tx = await!(send).unwrap();
+        let srsp = await!(cb_rx).unwrap();
         let srsp = S::parse_res(srsp);
-        *tx_lock = Some(tx);
+        *tx_lock = Some(sp_tx);
         srsp
     }
 }

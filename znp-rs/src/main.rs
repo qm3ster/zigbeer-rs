@@ -8,7 +8,6 @@ mod sreq;
 mod znp_codec;
 
 mod cmd;
-use cmd::util::UtilLedControl;
 
 mod znp;
 fn main() {
@@ -21,17 +20,18 @@ fn main() {
                 ZbDeviceInfoProp::IeeeAddr,
                 ZbDeviceInfoProp::ShortAddr,
             ] {
-                let v = ZbGetDeviceInfoReq { param };
-                let res = await!(znp.sreq(v));
+                let cmd = ZbGetDeviceInfoReq { param };
+                let res = await!(znp.sreq(cmd));
                 println!("{:x?}", res);
             }
 
+            use cmd::util::UtilLedControl;
             for id in 1..=2 {
-                let v = UtilLedControl {
+                let cmd = UtilLedControl {
                     led_id: id,
                     mode: false,
                 };
-                let res = await!(znp.sreq(v));
+                let res = await!(znp.sreq(cmd));
                 println!("{:x?}", res);
             }
 
@@ -40,11 +40,11 @@ fn main() {
             loop {
                 for i in (0..1000).chain((0..1000).rev()) {
                     on = !on;
-                    let v = UtilLedControl {
+                    let cmd = UtilLedControl {
                         led_id: id,
                         mode: on,
                     };
-                    let _res = await!(znp.sreq(v));
+                    let _res = await!(znp.sreq(cmd));
                     // println!("{:x?}", res);
                     use std::time::{Duration, Instant};
                     await!(tokio::timer::Delay::new(
