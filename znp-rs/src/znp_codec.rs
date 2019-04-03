@@ -11,7 +11,7 @@ fn xor(buf: &[u8]) -> u8 {
     buf.iter().fold(0x00, |acc, x| acc ^ x)
 }
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum Type {
     POLL = 0x00,
     SREQ = 0x20,
@@ -19,7 +19,7 @@ pub enum Type {
     SRSP = 0x60,
 }
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum Subsys {
     Reserved = 0x00,
     SYS = 0x01,
@@ -34,7 +34,7 @@ pub enum Subsys {
 }
 #[derive(Debug)]
 pub struct ZpiCmd {
-    pub typ: Type,
+    typ: Type,
     subsys: Subsys,
     cmd_id: u8,
     body: BytesMut,
@@ -47,6 +47,15 @@ impl ZpiCmd {
             cmd_id,
             body,
         }
+    }
+    pub fn typ(&self) -> Type {
+        self.typ
+    }
+    pub fn subsys(&self) -> Subsys {
+        self.subsys
+    }
+    pub fn cmd_id(&self) -> u8 {
+        self.cmd_id
     }
     pub fn parse<T: DeserializeOwned>(&self) -> crate::serde_znp::Result<T> {
         crate::serde_znp::deserialize(&self.body)

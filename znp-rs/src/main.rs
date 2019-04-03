@@ -3,6 +3,7 @@
 #[macro_use]
 extern crate tokio;
 
+mod areq;
 mod serde_znp;
 mod sreq;
 mod znp_codec;

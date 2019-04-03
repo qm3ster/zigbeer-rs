@@ -31,7 +31,7 @@ impl Znp {
                 while let Some(frame) = await!(sp_rx.next()) {
                     let frame = frame.unwrap();
                     use znp_codec::Type::{AREQ, SRSP};
-                    match frame.typ {
+                    match frame.typ() {
                         SRSP => {
                             if let Ok(Async::Ready(Some(cb))) = cbs_rx.poll() {
                                 cb.send(frame).unwrap();
@@ -41,7 +41,8 @@ impl Znp {
                             }
                         }
                         AREQ => {
-                            println!("AREQ:{:?}", &frame);
+                            use crate::cmd::Areq;
+                            println!("AREQ:{:?}", Areq::from_subsys(frame));
                         }
                         _ => panic!("incoming POLL or SREQ"),
                     }

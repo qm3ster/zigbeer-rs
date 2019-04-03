@@ -1,5 +1,7 @@
+use super::error::{Error, Result};
+use crate::areq::AreqIn;
 use crate::sreq::Sreq;
-use crate::znp_codec::Subsys;
+use crate::znp_codec::{Subsys, ZpiCmd};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -23,4 +25,21 @@ impl Sreq for StartTimer {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TimerExpired {
     pub timer_id: u8,
+}
+impl AreqIn for TimerExpired {
+    const SUBSYS: Subsys = Subsys::SYS;
+    const CMD_ID: u8 = 0x81;
+}
+
+#[derive(Debug)]
+pub enum In {
+    TimerExpired(TimerExpired),
+}
+impl In {
+    pub fn from_cmd(cmd: ZpiCmd) -> Result<Self> {
+        match cmd.cmd_id() {
+            TimerExpired::CMD_ID => Ok(In::TimerExpired(cmd.parse()?)),
+            _ => Err(Error::CmdId(cmd.cmd_id())),
+        }
+    }
 }
