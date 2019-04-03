@@ -25,6 +25,16 @@ fn main() {
                 println!("{:x?}", res);
             }
 
+            use cmd::sys::StartTimer;
+            for timer_id in 0..=3 {
+                let cmd = StartTimer {
+                    timer_id,
+                    timeout: 50 - 10 * timer_id as u16,
+                };
+                let res = await!(znp.sreq(cmd));
+                println!("{:x?}", res);
+            }
+
             use cmd::util::UtilLedControl;
             for id in 1..=2 {
                 let cmd = UtilLedControl {
