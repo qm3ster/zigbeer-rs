@@ -1,5 +1,5 @@
 use super::{Error, Result};
-use byteorder::{NetworkEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
 use de::{Deserialize, DeserializeSeed, EnumAccess, IntoDeserializer, VariantAccess, Visitor};
 use serde::{self, de};
 use std::str;
@@ -33,7 +33,7 @@ macro_rules! impl_nums {
         fn $dser_method<V>(self, visitor: V) -> Result<V::Value>
             where V: Visitor<'de>
         {
-            let value = self.bytes.$reader_method::<NetworkEndian>()?;
+            let value = self.bytes.$reader_method::<BigEndian>()?;
             visitor.$visitor_method(value)
         }
     };
