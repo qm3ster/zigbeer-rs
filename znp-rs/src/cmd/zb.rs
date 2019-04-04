@@ -31,3 +31,22 @@ impl Sreq for ZbGetDeviceInfoReq {
     const CMD_ID: u8 = 0x06;
     const MAX_SIZE: usize = 9;
 }
+
+/// ZB_READ_CONFIGURATION
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReadConfig {
+    pub id: u8,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReadConfigRsp {
+    /// Success 0 or Failure 1
+    pub status: u8,
+    pub id: u8,
+    pub value: Vec<u8>,
+}
+impl Sreq for ReadConfig {
+    type Srsp = ReadConfigRsp;
+    const SUBSYS: Subsys = Subsys::SAPI;
+    const CMD_ID: u8 = 0x04;
+    const MAX_SIZE: usize = 0x83;
+}

@@ -8,6 +8,8 @@ mod serde_znp;
 mod sreq;
 mod znp_codec;
 
+mod init_coord;
+
 mod cmd;
 
 mod znp;
@@ -35,6 +37,8 @@ fn main() {
             let res = await!(znp.sreq(cmd));
             // Expecting [0x55]
             println!("{:x?}", res);
+
+            await!(init_coord::init(&mut znp));
 
             use cmd::sys::StartTimer;
             for timer_id in 0..=3 {
