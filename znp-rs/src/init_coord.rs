@@ -1,74 +1,68 @@
-use super::cmd::zb::ReadConfig;
+use super::cmd::zb::{ConfigId, ReadConfig};
 use super::znp::Znp;
 pub async fn init(znp: &mut Znp) {
     struct NvParam {
-        configid: u8,
+        configid: ConfigId,
         len: u8,
         value: Vec<u8>,
     }
-    let startupOption = NvParam {
-        /// STARTUP_OPTION
-        configid: 0x03,
+    let startup_option = NvParam {
+        configid: ConfigId::StartupOption,
         len: 0x01,
         value: vec![0x00],
     };
-    let panId = NvParam {
-        /// PANID
-        configid: 0x83,
+    let pan_id = NvParam {
+        configid: ConfigId::Panid,
         len: 0x02,
-        value: vec![0xFF, 0xFF],
+        // Koenk default is 0x1a62, shepherd value is 0xffff
+        value: vec![0x62, 0x1A],
     };
-    let extPanId = NvParam {
-        /// EXTENDED_PAN_ID
-        configid: 0x2D,
+    let ext_pan_id = NvParam {
+        configid: ConfigId::ExtendedPanId,
         len: 0x08,
         value: vec![0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD],
     };
-    let channelList = NvParam {
-        /// CHANLIST
-        configid: 0x84,
+    let channel_list = NvParam {
+        configid: ConfigId::Chanlist,
         len: 0x04,
-        value: vec![0x00, 0x08, 0x00, 0x00], // Little endian. Default is 0x00000800 for CH11;  Ex: value: [ 0x00, 0x00, 0x00, 0x04 ] for CH26, [ 0x00, 0x00, 0x20, 0x00 ] for CH15.
+        // Little endian. Default is 0x00000800 for CH11;  Ex: value: [ 0x00, 0x00, 0x00, 0x04 ] for CH26, [ 0x00, 0x00, 0x20, 0x00 ] for CH15.
+        value: vec![0x00, 0x08, 0x00, 0x00],
     };
-    let logicalType = NvParam {
-        /// LOGICAL_TYPE
-        configid: 0x87,
+    let logical_type = NvParam {
+        configid: ConfigId::LogicalType,
         len: 0x01,
         value: vec![0x00],
     };
     let precfgkey = NvParam {
-        /// PRECFGKEY
-        configid: 0x62,
+        configid: ConfigId::Precfgkey,
         len: 0x10,
         value: vec![
             0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0F, 0x00, 0x02, 0x04, 0x06, 0x08, 0x0A,
             0x0C, 0x0D,
         ],
     };
-    let precfgkeysEnable = NvParam {
-        /// PRECFGKEYS_ENABLE
-        configid: 0x63,
+    let precfgkeys_enable = NvParam {
+        configid: ConfigId::PrecfgkeysEnable,
         len: 0x01,
         value: vec![0x00], // value: 0 (FALSE) only coord defualtKey need to be set, and OTA to set other devices in the network.
                            // value: 1 (TRUE) Not only coord, but also all devices need to set their defualtKey (the same key). Or they can't not join the network.
     };
-    let zdoDirectCb = NvParam {
-        /// ZDO_DIRECT_CB
-        configid: 0x8F,
+    let zdo_direct_cb = NvParam {
+        configid: ConfigId::ZdoDirectCb,
         len: 0x01,
         value: vec![0x01],
     };
-    let allParams = [
-        startupOption,
-        panId,
-        extPanId,
-        channelList,
-        logicalType,
+    let all_params = [
+        startup_option,
+        pan_id,
+        ext_pan_id,
+        channel_list,
+        logical_type,
         precfgkey,
-        precfgkeysEnable,
-        zdoDirectCb,
+        precfgkeys_enable,
+        zdo_direct_cb,
     ];
-    for param in &allParams {
+    for param in &all_params {
         let cmd = ReadConfig { id: param.configid };
         let res = await!(znp.sreq(cmd));
         println!("expected {:x?}", &param.value);
