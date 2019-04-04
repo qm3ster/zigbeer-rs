@@ -41,7 +41,9 @@ fn main() {
             await!(init_coord::init(&mut znp));
 
             use cmd::zdo::StartupFromApp;
-            let cmd = StartupFromApp { delay: 100 };
+            let cmd = StartupFromApp {
+                delay: 0, /* this was 100, why? When would you want this? */
+            };
             let res = await!(znp.sreq(cmd));
             println!("{:x?}", res);
 
@@ -55,34 +57,36 @@ fn main() {
                 println!("{:x?}", res);
             }
 
-            use cmd::util::UtilLedControl;
-            for id in 1..=2 {
-                let cmd = UtilLedControl {
-                    led_id: id,
-                    mode: false,
-                };
-                let res = await!(znp.sreq(cmd));
-                println!("{:x?}", res);
-            }
-
-            let id = 1;
-            let mut on = true;
-            loop {
-                for i in (0..1000).chain((0..1000).rev()) {
-                    on = !on;
-                    let cmd = UtilLedControl {
-                        led_id: id,
-                        mode: on,
-                    };
-                    let _res = await!(znp.sreq(cmd));
-                    // println!("{:x?}", res);
-                    use std::time::{Duration, Instant};
-                    await!(tokio::timer::Delay::new(
-                        Instant::now() + Duration::from_micros(if on { i } else { 1000 - i })
-                    ))
-                    .unwrap();
-                }
-            }
+            await!(blink_forever(&mut znp));
         },
     );
+}
+
+async fn blink_forever(znp: &mut znp::Znp) {
+    use cmd::util::{UtilLedControl, UtilLedControlRsp};
+    for id in 1..=2 {
+        let cmd = UtilLedControl {
+            led_id: id,
+            mode: false,
+        };
+        let res = await!(znp.sreq(cmd));
+        println!("{:x?}", res);
+    }
+
+    let led_id = 2;
+    let mut on = true;
+    loop {
+        on = !on;
+        let cmd = UtilLedControl { led_id, mode: on };
+        let res = await!(znp.sreq(cmd));
+        match res {
+            Ok(UtilLedControlRsp { status: 0 }) => {}
+            _ => println!("Couldn't toggle light: {:?}", res),
+        }
+        use std::time::{Duration, Instant};
+        await!(tokio::timer::Delay::new(
+            Instant::now() + Duration::from_millis(if on { 1 } else { 4000 })
+        ))
+        .unwrap();
+    }
 }
