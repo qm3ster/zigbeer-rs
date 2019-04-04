@@ -1,5 +1,7 @@
 pub mod error;
 use error::{Error, Result};
+pub mod types;
+
 pub mod sys;
 pub mod util;
 pub mod zb;
