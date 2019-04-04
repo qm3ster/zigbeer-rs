@@ -53,7 +53,16 @@ impl Znp {
                             }
                             AREQ => {
                                 use crate::cmd::Areq;
-                                println!("AREQ:{:?}", Areq::from_subsys(frame));
+                                match Areq::from_subsys(frame) {
+                                    Ok(areq) => println!("Known AREQ: {:?}", areq),
+                                    Err(cmd::error::Error::Unimplemented { subsys, cmd_id }) => {
+                                        println!(
+                                            "Unimplemented AREQ: {:?} Cmd1 = {:#X?}",
+                                            subsys, cmd_id
+                                        )
+                                    }
+                                    Err(err) => println!("Unimplemented AREQ: {:#X?}", err),
+                                }
                             }
                             _ => panic!("incoming POLL or SREQ"),
                         },
