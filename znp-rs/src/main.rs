@@ -40,6 +40,11 @@ fn main() {
 
             await!(init_coord::init(&mut znp));
 
+            use cmd::zdo::StartupFromApp;
+            let cmd = StartupFromApp { delay: 100 };
+            let res = await!(znp.sreq(cmd));
+            println!("{:x?}", res);
+
             use cmd::sys::StartTimer;
             for timer_id in 0..=3 {
                 let cmd = StartTimer {
