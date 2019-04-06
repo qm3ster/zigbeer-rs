@@ -6,14 +6,14 @@ pub mod sys;
 pub mod util;
 pub mod zb;
 pub mod zdo;
-use crate::znp_codec::{Subsys, ZpiCmd};
+use crate::znp_codec::{Subsys, ZnpCmd};
 #[derive(Debug)]
 pub enum Areq {
     Sys(sys::In),
     Zdo(zdo::In),
 }
 impl Areq {
-    pub fn from_subsys(cmd: ZpiCmd) -> Result<Self> {
+    pub fn from_subsys(cmd: ZnpCmd) -> Result<Self> {
         use Areq::*;
         use Subsys::*;
         match cmd.subsys() {

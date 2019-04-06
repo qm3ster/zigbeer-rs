@@ -2,7 +2,7 @@ use super::error::{Error, Result};
 use super::types::{IEEEAddr, ShortAddr};
 use crate::areq::AreqIn;
 use crate::sreq::Sreq;
-use crate::znp_codec::{Subsys, ZpiCmd};
+use crate::znp_codec::{Subsys, ZnpCmd};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -114,7 +114,7 @@ pub enum In {
     TrustCntDev(TrustCntDev),
 }
 impl In {
-    pub fn from_cmd(cmd: ZpiCmd) -> Result<Self> {
+    pub fn from_cmd(cmd: ZnpCmd) -> Result<Self> {
         match cmd.cmd_id() {
             StateChange::CMD_ID => Ok(In::StateChange(cmd.parse()?)),
             SourceRoute::CMD_ID => Ok(In::SourceRoute(cmd.parse()?)),

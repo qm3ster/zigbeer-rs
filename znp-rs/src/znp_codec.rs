@@ -33,15 +33,15 @@ pub enum Subsys {
     APP = 0x09,
 }
 #[derive(Debug)]
-pub struct ZpiCmd {
+pub struct ZnpCmd {
     typ: Type,
     subsys: Subsys,
     cmd_id: u8,
     body: BytesMut,
 }
-impl ZpiCmd {
+impl ZnpCmd {
     pub fn new(typ: Type, subsys: Subsys, cmd_id: u8, body: BytesMut) -> Self {
-        ZpiCmd {
+        ZnpCmd {
             typ,
             subsys,
             cmd_id,
@@ -63,7 +63,7 @@ impl ZpiCmd {
 }
 pub struct ZnpCodec;
 impl Decoder for ZnpCodec {
-    type Item = ZpiCmd;
+    type Item = ZnpCmd;
     type Error = io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -106,7 +106,7 @@ impl Decoder for ZnpCodec {
         let cmd_id = frame[2];
         // Skip: Length + Cmd0 + Cmd1
         frame.advance(3);
-        Ok(Some(ZpiCmd {
+        Ok(Some(ZnpCmd {
             typ,
             subsys,
             cmd_id,
@@ -115,11 +115,11 @@ impl Decoder for ZnpCodec {
     }
 }
 impl Encoder for ZnpCodec {
-    type Item = ZpiCmd;
+    type Item = ZnpCmd;
     type Error = io::Error;
 
     fn encode(&mut self, item: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
-        let ZpiCmd {
+        let ZnpCmd {
             typ,
             subsys,
             cmd_id,

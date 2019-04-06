@@ -1,4 +1,4 @@
-use crate::znp_codec::{Subsys, ZpiCmd};
+use crate::znp_codec::{Subsys, ZnpCmd};
 #[derive(Debug)]
 pub enum Error {
     Unimplemented { subsys: Subsys, cmd_id: u8 },
@@ -6,13 +6,13 @@ pub enum Error {
     Payload(String),
 }
 impl Error {
-    pub fn unimplemented(cmd: &ZpiCmd) -> Self {
+    pub fn unimplemented(cmd: &ZnpCmd) -> Self {
         Error::Unimplemented {
             subsys: cmd.subsys(),
             cmd_id: cmd.cmd_id(),
         }
     }
-    pub fn mismatched(cmd: &ZpiCmd) -> Self {
+    pub fn mismatched(cmd: &ZnpCmd) -> Self {
         Error::Mismatched {
             subsys: cmd.subsys(),
             cmd_id: cmd.cmd_id(),

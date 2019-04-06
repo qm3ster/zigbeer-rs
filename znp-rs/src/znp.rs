@@ -6,10 +6,10 @@ use std::path::Path;
 use tokio::prelude::*;
 use tokio::sync::{mpsc, oneshot};
 use tokio_serial::{Serial, SerialPortSettings};
-use znp_codec::{ZnpCodec, ZpiCmd};
+use znp_codec::{ZnpCodec, ZnpCmd};
 pub struct Znp {
     tx: Mutex<Option<tokio::prelude::stream::SplitSink<tokio::codec::Framed<Serial, ZnpCodec>>>>,
-    cbs: mpsc::Sender<oneshot::Sender<ZpiCmd>>,
+    cbs: mpsc::Sender<oneshot::Sender<ZnpCmd>>,
 }
 #[derive(Debug)]
 pub enum SreqError {
@@ -28,7 +28,7 @@ impl Znp {
         };
         let sp = Serial::from_path(path, &sp_settings).unwrap();
         let sp = tokio::codec::Framed::new(sp, ZnpCodec);
-        type Callback = oneshot::Sender<ZpiCmd>;
+        type Callback = oneshot::Sender<ZnpCmd>;
         let (ctx, cbs_rx) = mpsc::channel::<Callback>(1);
         let (stx, sp_rx) = sp.split();
         tokio::spawn_async(

@@ -1,7 +1,7 @@
 use super::error::{Error, Result};
 use crate::areq::AreqIn;
 use crate::sreq::Sreq;
-use crate::znp_codec::{Subsys, ZpiCmd};
+use crate::znp_codec::{Subsys, ZnpCmd};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -88,7 +88,7 @@ pub enum In {
     TimerExpired(TimerExpired),
 }
 impl In {
-    pub fn from_cmd(cmd: ZpiCmd) -> Result<Self> {
+    pub fn from_cmd(cmd: ZnpCmd) -> Result<Self> {
         match cmd.cmd_id() {
             Reset::CMD_ID => Ok(In::Reset(cmd.parse()?)),
             TimerExpired::CMD_ID => Ok(In::TimerExpired(cmd.parse()?)),
