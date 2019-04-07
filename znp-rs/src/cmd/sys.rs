@@ -1,5 +1,5 @@
 use super::error::{Error, Result};
-use crate::areq::AreqIn;
+use crate::areq::{AreqIn, AreqOut};
 use crate::sreq::Sreq;
 use crate::znp_codec::{Subsys, ZnpCmd};
 use serde::{Deserialize, Serialize};
@@ -80,6 +80,25 @@ impl Sreq for NvRead {
     const SUBSYS: Subsys = Subsys::SYS;
     const CMD_ID: u8 = 0x08;
     const MAX_SIZE: usize = 0xFA;
+}
+
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum ResetType {
+    /// Hardware/Watchdog reset
+    Hard = 0x00,
+    /// Jump to reset vector
+    Soft = 0x01,
+}
+/// SYS_RESET_REQ
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ResetReq {
+    pub typ: ResetType,
+}
+impl AreqOut for ResetReq {
+    const SUBSYS: Subsys = Subsys::SYS;
+    const CMD_ID: u8 = 0x00;
+    const MAX_SIZE: usize = 1;
 }
 
 #[derive(Debug)]

@@ -1,3 +1,4 @@
+use super::cmd::sys::{ResetReq, ResetType};
 use super::cmd::zb::{ConfigId, ReadConfig};
 use super::znp::Znp;
 pub async fn init(znp: &mut Znp) {
@@ -68,4 +69,10 @@ pub async fn init(znp: &mut Znp) {
         println!("expected {:x?}", &param.value);
         println!("got      {:x?}", res.unwrap().value);
     }
+}
+
+pub async fn soft_reset(znp: &mut Znp) {
+    await!(znp.areq(ResetReq {
+        typ: ResetType::Soft
+    }))
 }

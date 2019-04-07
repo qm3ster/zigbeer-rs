@@ -42,10 +42,10 @@ fn main() {
 
             use cmd::zdo::StartupFromApp;
             let cmd = StartupFromApp {
-                delay: 0, /* this was 100, why? When would you want this? */
+                delay: 100, /* this was 100, why? When would you want this? */
             };
             let res = await!(znp.sreq(cmd));
-            println!("{:x?}", res);
+            println!("StartupFromApp {:x?}", res);
 
             use cmd::sys::StartTimer;
             for timer_id in 0..=3 {
@@ -54,8 +54,10 @@ fn main() {
                     timeout: 50 - 10 * timer_id as u16,
                 };
                 let res = await!(znp.sreq(cmd));
-                println!("{:x?}", res);
+                println!("StartTimer {:x?}", res);
             }
+
+            await!(init_coord::soft_reset(&mut znp));
 
             await!(blink_forever(&mut znp));
         },
@@ -70,7 +72,7 @@ async fn blink_forever(znp: &mut znp::Znp) {
             mode: false,
         };
         let res = await!(znp.sreq(cmd));
-        println!("{:x?}", res);
+        println!("Light Off {:x?}", res);
     }
 
     let led_id = 2;
