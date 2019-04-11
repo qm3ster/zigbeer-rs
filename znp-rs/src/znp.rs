@@ -43,15 +43,32 @@ async fn receiver(
             }
             Ok(frame) => match frame.typ() {
                 SRSP => {
-                    if let Ok(Async::Ready(Some(cb))) = cbs_rx.poll() {
-                        let cb_res = cb.cb.send(frame);
-                        if let Err(frame) = cb_res {
-                            eprintln!("Late SRSP, dropping: {:?}", frame);
-                            // TODO: Determine if this is the next SRSP, or a late one.
+                    let cb = loop {
+                        match cbs_rx.poll() {
+                            Err(err) => {
+                                panic!(err);
+                            }
+                            Ok(Async::Ready(None)) => {
+                                panic!("callback sender is finished and closed");
+                            }
+                            Ok(Async::NotReady) => {
+                                eprintln!("Unexpected SRSP: {:?}", frame);
+                                panic!("SRSP no one was waiting for");
+                            }
+                            Ok(Async::Ready(Some(Callback { cb, subsys, cmd_id }))) => {
+                                if subsys != frame.subsys() || cmd_id != frame.cmd_id() {
+                                    println!("Mismatched SRSP, probably old");
+                                    continue;
+                                } else {
+                                    break cb;
+                                }
+                            }
                         }
-                    } else {
-                        eprintln!("Unexpected SRSP: {:?}", frame);
-                        panic!("SRSP no one was waiting for");
+                    };
+                    let cb_res = cb.send(frame);
+                    if let Err(frame) = cb_res {
+                        eprintln!("Late SRSP, dropping: {:?}", frame);
+                        // TODO: Determine if this is the next SRSP, or a late one.
                     }
                 }
                 AREQ => {

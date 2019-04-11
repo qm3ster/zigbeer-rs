@@ -11,7 +11,7 @@ fn xor(buf: &[u8]) -> u8 {
     buf.iter().fold(0x00, |acc, x| acc ^ x)
 }
 
-#[derive(Debug, Clone, Copy, FromPrimitive)]
+#[derive(Debug, Clone, Copy, FromPrimitive, PartialEq)]
 pub enum Type {
     POLL = 0x00,
     SREQ = 0x20,
@@ -19,7 +19,7 @@ pub enum Type {
     SRSP = 0x60,
 }
 
-#[derive(Debug, Clone, Copy, FromPrimitive)]
+#[derive(Debug, Clone, Copy, FromPrimitive, PartialEq)]
 pub enum Subsys {
     Reserved = 0x00,
     SYS = 0x01,
