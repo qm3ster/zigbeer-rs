@@ -32,6 +32,7 @@ enum SendJob {
 async fn receiver(
     cbs_rx: mpsc::Receiver<Callback>,
     mut sp_rx: stream::SplitStream<tokio::codec::Framed<Serial, ZnpCodec>>,
+    mut areq_tx: mpsc::Sender<crate::cmd::Areq>,
 ) {
     let mut cbs_rx = cbs_rx.filter(|cb| !cb.cb.is_closed());
     while let Some(frame) = await!(sp_rx.next()) {
@@ -74,7 +75,9 @@ async fn receiver(
                 AREQ => {
                     use crate::cmd::Areq;
                     match Areq::from_subsys(frame) {
-                        Ok(areq) => println!("Known AREQ: {:?}", areq),
+                        Ok(areq) => {
+                            await!(Sink::send(&mut areq_tx, areq)).expect("Couldn't send AREQ");
+                        }
                         Err(cmd::error::Error::Unimplemented { subsys, cmd_id }) => {
                             println!("Unimplemented AREQ: {:?} Cmd1 = {:#X?}", subsys, cmd_id)
                         }
@@ -86,31 +89,12 @@ async fn receiver(
         }
     }
 }
-async fn sender(
-    mut sendjob_rx: mpsc::Receiver<SendJob>,
-    mut sp_tx: stream::SplitSink<tokio::codec::Framed<Serial, ZnpCodec>>,
-    mut cbs_tx: mpsc::Sender<Callback>,
-) {
-    // None is sender closed, RecvError is sender closed.
-    while let Some(Ok(sendjob)) = await!(sendjob_rx.next()) {
-        match sendjob {
-            SendJob::Sreq(frame, cb) => {
-                await!((&mut cbs_tx).send(cb)).expect("receiver gone");
-                let send = Sink::send(&mut sp_tx, frame);
-                await!(send).expect("SREQ send IO error");
-            }
-            SendJob::Areq(frame) => {
-                let send = Sink::send(&mut sp_tx, frame);
-                await!(send).expect("AREQ send IO error");
-            }
-        }
-    }
+pub struct Sender {
+    sp_tx: stream::SplitSink<tokio::codec::Framed<Serial, ZnpCodec>>,
+    cbs_tx: mpsc::Sender<Callback>,
 }
-pub struct Znp {
-    tx: mpsc::Sender<SendJob>,
-}
-impl Znp {
-    pub fn from_path<P>(path: P) -> Self
+impl Sender {
+    pub fn from_path<P>(path: P) -> (Self, mpsc::Receiver<crate::cmd::Areq>)
     where
         P: AsRef<Path>,
     {
@@ -121,11 +105,10 @@ impl Znp {
         let sp = Serial::from_path(path, &sp_settings).unwrap();
         let sp = tokio::codec::Framed::new(sp, ZnpCodec);
         let (cbs_tx, cbs_rx) = mpsc::channel::<Callback>(2);
-        let (sendjob_tx, sendjob_rx) = mpsc::channel::<SendJob>(1);
+        let (areq_tx, areq_rx) = mpsc::channel::<crate::cmd::Areq>(1);
         let (sp_tx, sp_rx) = sp.split();
-        tokio::spawn_async(receiver(cbs_rx, sp_rx));
-        tokio::spawn_async(sender(sendjob_rx, sp_tx, cbs_tx));
-        Znp { tx: sendjob_tx }
+        tokio::spawn_async(receiver(cbs_rx, sp_rx, areq_tx));
+        (Sender { sp_tx, cbs_tx }, areq_rx)
     }
     pub async fn sreq<S>(&mut self, req: S) -> Result<S::Srsp, SreqError>
     where
@@ -133,13 +116,13 @@ impl Znp {
     {
         let (cb_tx, cb_rx) = oneshot::channel();
         let frame = req.frame();
-        let cb_tx = Callback {
+        let cb = Callback {
             cb: cb_tx,
             subsys: frame.subsys(),
             cmd_id: frame.cmd_id(),
         };
-        let send = Sink::send(&mut self.tx, SendJob::Sreq(frame, cb_tx));
-        await!(send).expect("Error placing SREQ job");
+        await!(Sink::send(&mut self.cbs_tx, cb)).expect("receiver gone");
+        await!(Sink::send(&mut self.sp_tx, frame)).expect("SREQ send IO error");
         let cb_rx = cb_rx.timeout(Duration::from_millis(1000));
         let srsp = await!(cb_rx).map_err(|err| {
             if err.is_elapsed() {
@@ -157,7 +140,6 @@ impl Znp {
     where
         A: AreqOut + 'static,
     {
-        let send = Sink::send(&mut self.tx, SendJob::Areq(req.frame()));
-        await!(send).expect("Error placing AREQ job");
+        await!(Sink::send(&mut self.sp_tx, req.frame())).expect("AREQ send IO error");
     }
 }

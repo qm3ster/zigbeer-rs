@@ -1,7 +1,7 @@
 use super::cmd::sys::{ResetReq, ResetType};
 use super::cmd::zb::{ConfigId, ReadConfig};
-use super::znp::Znp;
-pub async fn init(znp: &mut Znp) {
+use super::znp::Sender;
+pub async fn init(znp: &mut Sender) {
     struct NvParam {
         configid: ConfigId,
         len: u8,
@@ -71,7 +71,7 @@ pub async fn init(znp: &mut Znp) {
     }
 }
 
-pub async fn soft_reset(znp: &mut Znp) {
+pub async fn soft_reset(znp: &mut Sender) {
     await!(znp.areq(ResetReq {
         typ: ResetType::Soft
     }))

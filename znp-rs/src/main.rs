@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate tokio;
 
+use tokio::prelude::*;
+
 mod areq;
 mod serde_znp;
 mod sreq;
@@ -16,7 +18,15 @@ mod znp;
 fn main() {
     tokio::run_async(
         async {
-            let mut znp = znp::Znp::from_path("/dev/ttyACM0");
+            let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
+            tokio::spawn_async(
+                async {
+                    let mut rec = rec;
+                    while let Some(areq) = await!(rec.next()) {
+                        println!("AREQ: {:?}", areq);
+                    }
+                },
+            );
             use cmd::zb::{ZbDeviceInfoProp, ZbGetDeviceInfoReq};
             for param in vec![
                 ZbDeviceInfoProp::DevState,
@@ -64,7 +74,7 @@ fn main() {
     );
 }
 
-async fn blink_forever(znp: &mut znp::Znp) {
+async fn blink_forever(znp: &mut znp::Sender) {
     use cmd::util::{UtilLedControl, UtilLedControlRsp};
     for id in 1..=2 {
         let cmd = UtilLedControl {
