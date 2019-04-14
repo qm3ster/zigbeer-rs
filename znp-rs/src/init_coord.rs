@@ -1,7 +1,29 @@
+use super::cmd;
+use super::cmd::af::Register;
 use super::cmd::sys::{ResetReq, ResetType};
 use super::cmd::zb::{ConfigId, ReadConfig};
 use super::znp::Sender;
 pub async fn init(znp: &mut Sender) {
+    use cmd::zb::{ZbDeviceInfoProp, ZbGetDeviceInfoReq};
+    for param in vec![
+        ZbDeviceInfoProp::DevState,
+        ZbDeviceInfoProp::IeeeAddr,
+        ZbDeviceInfoProp::ShortAddr,
+    ] {
+        let cmd = ZbGetDeviceInfoReq { param };
+        let res = await!(znp.sreq(cmd));
+        println!("{:x?}", res);
+    }
+
+    use cmd::sys::NvRead;
+    let cmd = NvRead {
+        /// ZNP_HAS_CONFIGURED
+        id: 0x0F00,
+        offset: 0x00,
+    };
+    let res = await!(znp.sreq(cmd));
+    // Expecting [0x55]
+    println!("{:x?}", res);
     struct NvParam {
         configid: ConfigId,
         len: u8,
@@ -69,6 +91,27 @@ pub async fn init(znp: &mut Sender) {
         println!("expected {:x?}", &param.value);
         println!("got      {:x?}", res.unwrap().value);
     }
+    let endpoint_profile_ids = [0x0104, 0x0101, 0x0105, 0x0107, 0x0108, 0x0109];
+    for (ep, app_prof) in endpoint_profile_ids.iter().enumerate() {
+        let cmd = Register {
+            ep: ep as u8 + 1,
+            app_prof: *app_prof,
+            in_clusters: vec![
+                crate::zcl::ha::general::basic,
+                crate::zcl::ha::general::on_off,
+            ],
+            ..Default::default()
+        };
+        let res = await!(znp.sreq(cmd));
+        println!("{:x?}", res.unwrap().status);
+    }
+
+    use cmd::zdo::StartupFromApp;
+    let cmd = StartupFromApp {
+        delay: 100, /* this was 100, why? When would you want this? */
+    };
+    let res = await!(znp.sreq(cmd));
+    println!("StartupFromApp {:x?}", res);
 }
 
 pub async fn soft_reset(znp: &mut Sender) {

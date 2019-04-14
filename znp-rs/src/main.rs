@@ -13,6 +13,7 @@ mod znp_codec;
 mod init_coord;
 
 mod cmd;
+mod zcl;
 
 mod znp;
 fn main() {
@@ -27,35 +28,8 @@ fn main() {
                     }
                 },
             );
-            use cmd::zb::{ZbDeviceInfoProp, ZbGetDeviceInfoReq};
-            for param in vec![
-                ZbDeviceInfoProp::DevState,
-                ZbDeviceInfoProp::IeeeAddr,
-                ZbDeviceInfoProp::ShortAddr,
-            ] {
-                let cmd = ZbGetDeviceInfoReq { param };
-                let res = await!(znp.sreq(cmd));
-                println!("{:x?}", res);
-            }
-
-            use cmd::sys::NvRead;
-            let cmd = NvRead {
-                /// ZNP_HAS_CONFIGURED
-                id: 0x0F00,
-                offset: 0x00,
-            };
-            let res = await!(znp.sreq(cmd));
-            // Expecting [0x55]
-            println!("{:x?}", res);
 
             await!(init_coord::init(&mut znp));
-
-            use cmd::zdo::StartupFromApp;
-            let cmd = StartupFromApp {
-                delay: 100, /* this was 100, why? When would you want this? */
-            };
-            let res = await!(znp.sreq(cmd));
-            println!("StartupFromApp {:x?}", res);
 
             use cmd::sys::StartTimer;
             for timer_id in 0..=3 {
@@ -67,7 +41,7 @@ fn main() {
                 println!("StartTimer {:x?}", res);
             }
 
-            await!(init_coord::soft_reset(&mut znp));
+            // await!(init_coord::soft_reset(&mut znp));
 
             await!(blink_forever(&mut znp));
         },
