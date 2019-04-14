@@ -97,7 +97,7 @@ pub struct TrustCntDev {
     pub addr: ShortAddr,
     /// Source IEEE address
     pub ieee_addr: IEEEAddr,
-    /// Parent newrork address
+    /// Parent network address
     pub parent_addr: ShortAddr,
 }
 impl AreqIn for TrustCntDev {
