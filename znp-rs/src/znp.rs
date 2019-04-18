@@ -58,7 +58,7 @@ async fn receiver(
                             }
                             Ok(Async::Ready(Some(Callback { cb, subsys, cmd_id }))) => {
                                 if subsys != frame.subsys() || cmd_id != frame.cmd_id() {
-                                    println!("Mismatched SRSP, probably old");
+                                    eprintln!("Mismatched SRSP, probably old: {:?}", frame);
                                     continue;
                                 } else {
                                     break cb;

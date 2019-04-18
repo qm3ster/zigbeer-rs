@@ -17,35 +17,31 @@ mod zcl;
 
 mod znp;
 fn main() {
-    tokio::run_async(
-        async {
-            let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
-            tokio::spawn_async(
-                async {
-                    let mut rec = rec;
-                    while let Some(areq) = await!(rec.next()) {
-                        println!("AREQ: {:?}", areq);
-                    }
-                },
-            );
-
-            await!(init_coord::init(&mut znp));
-
-            use cmd::sys::StartTimer;
-            for timer_id in 0..=3 {
-                let cmd = StartTimer {
-                    timer_id,
-                    timeout: 50 - 10 * timer_id as u16,
-                };
-                let res = await!(znp.sreq(cmd));
-                println!("StartTimer {:x?}", res);
+    tokio::run_async(async {
+        let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
+        tokio::spawn_async(async {
+            let mut rec = rec;
+            while let Some(areq) = await!(rec.next()) {
+                println!("AREQ: {:?}", areq);
             }
+        });
 
-            // await!(init_coord::soft_reset(&mut znp));
+        await!(init_coord::init(&mut znp));
 
-            await!(blink_forever(&mut znp));
-        },
-    );
+        use cmd::sys::StartTimer;
+        for timer_id in 0..=3 {
+            let cmd = StartTimer {
+                timer_id,
+                timeout: 50 - 10 * timer_id as u16,
+            };
+            let res = await!(znp.sreq(cmd));
+            println!("StartTimer {:x?}", res);
+        }
+
+        // await!(init_coord::soft_reset(&mut znp));
+
+        await!(blink_forever(&mut znp));
+    });
 }
 
 async fn blink_forever(znp: &mut znp::Sender) {
