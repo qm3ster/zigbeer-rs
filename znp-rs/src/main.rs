@@ -1,4 +1,5 @@
 #![feature(await_macro, async_await, futures_api)]
+#![warn(bare_trait_objects)]
 
 #[macro_use]
 extern crate tokio;
@@ -22,7 +23,12 @@ fn main() {
         tokio::spawn_async(async {
             let mut rec = rec;
             while let Some(areq) = await!(rec.next()) {
-                println!("AREQ: {:?}", areq);
+                println!("AREQ: {:x?}", &areq);
+                if let Ok(cmd::Areq::Af(cmd::af::In::IncomingMsg(msg))) = areq {
+                    use bytes::buf::IntoBuf;
+                    let msg = crate::zcl::frame::ZclFrame::parse(msg.data.into_buf());
+                    println!("{:?}", msg);
+                }
             }
         });
 
