@@ -35,7 +35,7 @@ async fn receiver(
     mut areq_tx: mpsc::Sender<crate::cmd::Areq>,
 ) {
     let mut cbs_rx = cbs_rx.filter(|cb| !cb.cb.is_closed());
-    while let Some(frame) = await!(sp_rx.next()) {
+    while let Some(frame) = await!(sp_rx.into_future()) {
         use znp_codec::Type::{AREQ, SRSP};
         match frame {
             Err(err) => {

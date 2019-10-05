@@ -15,13 +15,13 @@ pub enum Direction {
 #[packed_struct(bit_numbering = "msb0")]
 pub struct FrameControl {
     #[packed_field(bits = "0..=1", ty = "enum")]
-    frame_type: FrameType,
+    pub frame_type: FrameType,
     #[packed_field(bits = "2")]
-    manufacturer_specific: bool,
+    pub manufacturer_specific: bool,
     #[packed_field(bits = "3", ty = "enum")]
-    direction: Direction,
+    pub direction: Direction,
     #[packed_field(bits = "4")]
-    disable_default_rsp: bool,
+    pub disable_default_rsp: bool,
 }
 #[derive(Debug)]
 pub struct ZclFrame {

@@ -1,9 +1,6 @@
 #![feature(await_macro, async_await, futures_api)]
 #![warn(bare_trait_objects)]
 
-#[macro_use]
-extern crate tokio;
-
 use tokio::prelude::*;
 
 mod areq;
@@ -17,20 +14,26 @@ mod cmd;
 mod zcl;
 
 mod znp;
+
+
+    use futures::{FutureExt, TryFutureExt};
+    use futures::compat::Future01CompatExt;
+
+
 fn main() {
-    tokio::run_async(async {
+    let app = async {
         let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
-        tokio::spawn_async(async {
+        tokio::spawn(async {
             let mut rec = rec;
-            while let Some(areq) = await!(rec.next()) {
+            rec.for_each(|areq| {
                 println!("AREQ: {:x?}", &areq);
-                if let Ok(cmd::Areq::Af(cmd::af::In::IncomingMsg(msg))) = areq {
-                    use bytes::buf::IntoBuf;
-                    let msg = crate::zcl::frame::ZclFrame::parse(msg.data.into_buf());
+                if let cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) = areq {
+                    let msg = zcl::clusters::In::from_incoming(&incoming);
                     println!("{:?}", msg);
                 }
-            }
-        });
+                Ok(())
+            }).compat().await;
+        }.unit_error().boxed().compat());
 
         await!(init_coord::init(&mut znp));
 
@@ -47,7 +50,9 @@ fn main() {
         // await!(init_coord::soft_reset(&mut znp));
 
         await!(blink_forever(&mut znp));
-    });
+    };
+                    tokio::run(app.unit_error().boxed().compat());
+
 }
 
 async fn blink_forever(znp: &mut znp::Sender) {
@@ -74,7 +79,7 @@ async fn blink_forever(znp: &mut znp::Sender) {
         use std::time::{Duration, Instant};
         await!(tokio::timer::Delay::new(
             Instant::now() + Duration::from_millis(if on { 1 } else { 4000 })
-        ))
+        ).compat())
         .unwrap();
     }
 }
