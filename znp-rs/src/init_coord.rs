@@ -11,7 +11,7 @@ pub async fn init(znp: &mut Sender) {
         ZbDeviceInfoProp::ShortAddr,
     ] {
         let cmd = ZbGetDeviceInfoReq { param };
-        let res = await!(znp.sreq(cmd));
+        let res = znp.sreq(cmd).await;
         println!("{:x?}", res);
     }
 
@@ -21,7 +21,7 @@ pub async fn init(znp: &mut Sender) {
         id: 0x0F00,
         offset: 0x00,
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     // Expecting [0x55]
     println!("{:x?}", res);
     struct NvParam {
@@ -87,7 +87,7 @@ pub async fn init(znp: &mut Sender) {
     ];
     for param in &all_params {
         let cmd = ReadConfig { id: param.configid };
-        let res = await!(znp.sreq(cmd));
+        let res = znp.sreq(cmd).await;
         println!("expected {:x?}", &param.value);
         println!("got      {:x?}", res.unwrap().value);
     }
@@ -96,7 +96,7 @@ pub async fn init(znp: &mut Sender) {
     let cmd = StartupFromApp {
         delay: 100, /* this was 100, why? When would you want this? */
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("StartupFromApp {:x?}", res);
 
     use cmd::zdo::NodeDescReq;
@@ -104,7 +104,7 @@ pub async fn init(znp: &mut Sender) {
         dest_addr: ShortAddr(0),
         query_addr: ShortAddr(0),
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("NodeDescReq {:x?}", res.unwrap().status);
 
     use cmd::zdo::ActiveEpReq;
@@ -112,7 +112,7 @@ pub async fn init(znp: &mut Sender) {
         dest_addr: ShortAddr(0),
         query_addr: ShortAddr(0),
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("Active EPs {:x?}", res.unwrap());
 
     use cmd::af::Register;
@@ -125,7 +125,7 @@ pub async fn init(znp: &mut Sender) {
             // in_clusters: vec![0, 1026, 1029, 6],
             ..Default::default()
         };
-        let res = await!(znp.sreq(cmd));
+        let res = znp.sreq(cmd).await;
         println!("Register ep {:x} {:x?}", ep, res.unwrap());
     }
     let cmd = Register {
@@ -136,14 +136,14 @@ pub async fn init(znp: &mut Sender) {
         out_clusters: vec![0x0500, 0x0502, 0x0003],
         ..Default::default()
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("Register ep 11 {:x?}", res.unwrap());
 
     let cmd = ActiveEpReq {
         dest_addr: ShortAddr(0),
         query_addr: ShortAddr(0),
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("Active EPs {:x?}", res.unwrap());
 
     use cmd::zdo::MgmtPermitJoinReq;
@@ -153,7 +153,7 @@ pub async fn init(znp: &mut Sender) {
         duration: 0x0,
         tc_significance: 0,
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("MgmtPermitJoinReq {:x?}", res.unwrap().status);
     let cmd = MgmtPermitJoinReq {
         addr_mode: 0x0f,
@@ -161,7 +161,7 @@ pub async fn init(znp: &mut Sender) {
         duration: 0xff,
         tc_significance: 0,
     };
-    let res = await!(znp.sreq(cmd));
+    let res = znp.sreq(cmd).await;
     println!("MgmtPermitJoinReq {:x?}", res.unwrap().status);
     // let cmd = MgmtPermitJoinReq {
     //     addr_mode: 0x02,
@@ -169,12 +169,13 @@ pub async fn init(znp: &mut Sender) {
     //     duration: 0xff,
     //     tc_significance: 0,
     // };
-    // let res = await!(znp.sreq(cmd));
+    // let res = znp.sreq(cmd).await;
     // println!("MgmtPermitJoinReq {:x?}", res.unwrap().status);
 }
 
 pub async fn soft_reset(znp: &mut Sender) {
-    await!(znp.areq(ResetReq {
-        typ: ResetType::Soft
-    }))
+    znp.areq(ResetReq {
+        typ: ResetType::Soft,
+    })
+    .await
 }

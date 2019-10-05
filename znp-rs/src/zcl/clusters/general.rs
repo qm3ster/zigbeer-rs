@@ -14,7 +14,7 @@ pub enum VarType {
     // String = 0x42,
 }
 
-use std::io::{self, Read, BufRead};
+use std::io::{self, BufRead, Read};
 
 impl VarType {
     fn read<R: BufRead>(&self, reader: &mut R) -> io::Result<VarTypeVal> {
@@ -36,7 +36,7 @@ pub enum VarTypeVal {
     Uint8(u8),
     Uint16(u16),
     Bool(bool),
-    String(String)
+    String(String),
 }
 
 #[derive(Debug)]

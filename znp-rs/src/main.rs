@@ -1,4 +1,3 @@
-#![feature(await_macro, async_await, futures_api)]
 #![warn(bare_trait_objects)]
 
 use tokio::prelude::*;
@@ -15,44 +14,38 @@ mod zcl;
 
 mod znp;
 
+use futures::{future, stream::StreamExt};
 
-    use futures::{FutureExt, TryFutureExt};
-    use futures::compat::Future01CompatExt;
+#[tokio::main]
+async fn main() {
+    let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
+    tokio::spawn(async {
+        rec.for_each(|areq| {
+            println!("AREQ: {:x?}", &areq);
+            if let cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) = areq {
+                let msg = zcl::clusters::In::from_incoming(&incoming);
+                println!("{:?}", msg);
+            }
+            future::ready(())
+        })
+        .await;
+    });
 
+    init_coord::init(&mut znp).await;
 
-fn main() {
-    let app = async {
-        let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
-        tokio::spawn(async {
-            let mut rec = rec;
-            rec.for_each(|areq| {
-                println!("AREQ: {:x?}", &areq);
-                if let cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) = areq {
-                    let msg = zcl::clusters::In::from_incoming(&incoming);
-                    println!("{:?}", msg);
-                }
-                Ok(())
-            }).compat().await;
-        }.unit_error().boxed().compat());
+    use cmd::sys::StartTimer;
+    for timer_id in 0..=3 {
+        let cmd = StartTimer {
+            timer_id,
+            timeout: 50 - 10 * timer_id as u16,
+        };
+        let res = znp.sreq(cmd).await;
+        println!("StartTimer {:x?}", res);
+    }
 
-        await!(init_coord::init(&mut znp));
+    // init_coord::soft_reset(&mut znp).await;
 
-        use cmd::sys::StartTimer;
-        for timer_id in 0..=3 {
-            let cmd = StartTimer {
-                timer_id,
-                timeout: 50 - 10 * timer_id as u16,
-            };
-            let res = await!(znp.sreq(cmd));
-            println!("StartTimer {:x?}", res);
-        }
-
-        // await!(init_coord::soft_reset(&mut znp));
-
-        await!(blink_forever(&mut znp));
-    };
-                    tokio::run(app.unit_error().boxed().compat());
-
+    blink_forever(&mut znp).await;
 }
 
 async fn blink_forever(znp: &mut znp::Sender) {
@@ -62,7 +55,7 @@ async fn blink_forever(znp: &mut znp::Sender) {
             led_id: id,
             mode: false,
         };
-        let res = await!(znp.sreq(cmd));
+        let res = znp.sreq(cmd).await;
         println!("Light Off {:x?}", res);
     }
 
@@ -71,15 +64,12 @@ async fn blink_forever(znp: &mut znp::Sender) {
     loop {
         on = !on;
         let cmd = UtilLedControl { led_id, mode: on };
-        let res = await!(znp.sreq(cmd));
+        let res = znp.sreq(cmd).await;
         match res {
             Ok(UtilLedControlRsp { status: 0 }) => {}
             _ => println!("Couldn't toggle light: {:?}", res),
         }
-        use std::time::{Duration, Instant};
-        await!(tokio::timer::Delay::new(
-            Instant::now() + Duration::from_millis(if on { 1 } else { 4000 })
-        ).compat())
-        .unwrap();
+        use std::time::Duration;
+        tokio::timer::delay_for(Duration::from_millis(if on { 1 } else { 4000 })).await;
     }
 }
