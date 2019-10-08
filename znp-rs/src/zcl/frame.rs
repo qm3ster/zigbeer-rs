@@ -12,7 +12,7 @@ pub enum Direction {
     ClientToServer = 0b1,
 }
 #[derive(PackedStruct, Debug)]
-#[packed_struct(bit_numbering = "msb0")]
+#[packed_struct(bit_numbering = "lsb0", size_bytes = "1")]
 pub struct FrameControl {
     #[packed_field(bits = "0..=1", ty = "enum")]
     pub frame_type: FrameType,
@@ -22,6 +22,8 @@ pub struct FrameControl {
     pub direction: Direction,
     #[packed_field(bits = "4")]
     pub disable_default_rsp: bool,
+    #[packed_field(bits = "5..=7")]
+    pub reserved: u8,
 }
 #[derive(Debug)]
 pub struct ZclFrame {
