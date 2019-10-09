@@ -1,6 +1,4 @@
-#![warn(bare_trait_objects)]
-
-use tokio::prelude::*;
+#![warn(clippy::all)]
 
 mod areq;
 mod serde_znp;
@@ -14,21 +12,27 @@ mod zcl;
 
 mod znp;
 
-use futures::{future, stream::StreamExt};
+use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() {
     let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
     tokio::spawn(async {
-        rec.for_each(|areq| {
+        let mut rec = rec;
+        while let Some(areq) = rec.next().await {
             println!("AREQ: {:x?}", &areq);
             if let cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) = areq {
-                let msg = zcl::clusters::In::from_incoming(&incoming);
-                println!("{:?}", msg);
+                use bytes::IntoBuf;
+                let frame = zcl::frame::ZclFrame::parse(incoming.data.into_buf());
+                println!("ZclFrame: {:x?}", frame);
+                let cluster = zcl::clusters::ClusterId::from(incoming.cluster);
+                println!("Cluster: {:x?}", cluster);
+                if let Ok(cluster) = cluster {
+                    let msg = zcl::clusters::In::parse(cluster, frame);
+                    println!("{:x?}", msg);
+                }
             }
-            future::ready(())
-        })
-        .await;
+        }
     });
 
     init_coord::init(&mut znp).await;
