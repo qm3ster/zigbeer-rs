@@ -1,14 +1,14 @@
 use super::ClusterId;
 #[derive(Debug)]
 pub enum Error {
-    UnimplementedCmd { cmd_id: u8 },
+    UnknownCmd { cmd_id: u8 },
     UnknownCluser { cluster: u16 },
     UnimplementedCluster { cluster: ClusterId },
     Payload(String),
 }
 impl Error {
-    pub fn unimplemented_cmd(cmd_id: u8) -> Self {
-        Error::UnimplementedCmd { cmd_id }
+    pub fn unknown_cmd(cmd_id: u8) -> Self {
+        Error::UnknownCmd { cmd_id }
     }
     pub fn unknown_cluster(cluster: u16) -> Self {
         Error::UnknownCluser { cluster }
