@@ -1,3 +1,4 @@
+use bytes::Buf;
 use packed_struct::prelude::*;
 use packed_struct_codegen::*;
 
@@ -33,7 +34,6 @@ pub struct ZclFrame {
     pub cmd_id: u8,
     pub payload: Vec<u8>,
 }
-use bytes::Buf;
 impl ZclFrame {
     pub fn parse<B: Buf>(mut buf: B) -> Self {
         let frame_control = FrameControl::unpack(&[buf.get_u8()]).unwrap();
