@@ -1,5 +1,5 @@
 use super::error::{Error, Result};
-use super::types::{IEEEAddr, ShortAddr};
+use super::types::{Endpoint, IEEEAddr, ShortAddr};
 use crate::areq::AreqIn;
 use crate::sreq::Sreq;
 use crate::znp_codec::{Subsys, ZnpCmd};
@@ -58,6 +58,89 @@ impl AreqIn for NodeDescRsp {
     const CMD_ID: u8 = 0x82;
 }
 
+/// ZDO_POWER_DESC_REQ
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PowerDescReq {
+    /// Address to respond to
+    pub dest_addr: ShortAddr,
+    /// NWKAddrOfInterest - Specifies NWK address of the destination device being queried
+    pub query_addr: ShortAddr,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PowerDescReqRsp {
+    /// Success 0 or Failure 1
+    pub status: u8,
+}
+impl Sreq for PowerDescReq {
+    type Srsp = PowerDescReqRsp;
+    const SUBSYS: Subsys = Subsys::ZDO;
+    const CMD_ID: u8 = 0x03;
+    const MAX_SIZE: usize = 0x04;
+}
+
+/// ZDO_POWER_DESC_RSP
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PowerDescRsp {
+    pub src_addr: ShortAddr,
+    /// Success 0 or Failure 1
+    pub status: u8,
+    pub query_addr: ShortAddr,
+    /// CurrentPowerMode/AvailablePowerSources
+    pub field1: u8,
+    /// CurrentPowerSource/CurrentPowerSourceLevel
+    pub field2: u8,
+}
+impl AreqIn for PowerDescRsp {
+    const SUBSYS: Subsys = Subsys::ZDO;
+    const CMD_ID: u8 = 0x83;
+}
+
+/// ZDO_SIMPLE_DESC_REQ
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SimpleDescReq {
+    /// Address to respond to
+    pub dest_addr: ShortAddr,
+    /// NWKAddrOfInterest - Specifies NWK address of the destination device being queried
+    pub query_addr: ShortAddr,
+    /// Specifies the application endpoint the data is from
+    pub endpoint: Endpoint,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SimpleDescReqRsp {
+    /// Success 0 or Failure 1
+    pub status: u8,
+}
+impl Sreq for SimpleDescReq {
+    type Srsp = SimpleDescReqRsp;
+    const SUBSYS: Subsys = Subsys::ZDO;
+    const CMD_ID: u8 = 0x04;
+    const MAX_SIZE: usize = 0x04;
+}
+
+/// ZDO_SIMPLE_DESC_RSP
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SimpleDescRsp {
+    pub src_addr: ShortAddr,
+    /// Success 0 or Failure 1
+    pub status: u8,
+    pub query_addr: ShortAddr,
+    /// Specifies the length of the simple descriptor
+    pub len: u8,
+    pub endpoint: Endpoint,
+    /// Profile Id for endpoint
+    pub profile_id: u16,
+    /// Device Description Id for endpoint
+    pub device_id: u16,
+    /// 0 = Version 1.00, 0x01-0x0F = Reserved
+    pub device_version: u8,
+    pub input_clusters: Vec<u16>,
+    pub output_clusters: Vec<u16>,
+}
+impl AreqIn for SimpleDescRsp {
+    const SUBSYS: Subsys = Subsys::ZDO;
+    const CMD_ID: u8 = 0x84;
+}
+
 /// ZDO_ACTIVE_EP_REQ
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ActiveEpReq {
@@ -90,6 +173,41 @@ pub struct ActiveEpRsp {
 impl AreqIn for ActiveEpRsp {
     const SUBSYS: Subsys = Subsys::ZDO;
     const CMD_ID: u8 = 0x85;
+}
+
+/// ZDO_COMPLEX_DESC_REQ
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ComplexDescReq {
+    /// Address to respond to
+    pub dest_addr: ShortAddr,
+    /// NWKAddrOfInterest - Specifies NWK address of the destination device being queried
+    pub query_addr: ShortAddr,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ComplexDescReqRsp {
+    /// Success 0 or Failure 1
+    pub status: u8,
+}
+impl Sreq for ComplexDescReq {
+    type Srsp = ComplexDescReqRsp;
+    const SUBSYS: Subsys = Subsys::ZDO;
+    const CMD_ID: u8 = 0x07;
+    const MAX_SIZE: usize = 0x04;
+}
+
+/// ZDO_COMPLEX_DESC_RSP
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ComplexDescRsp {
+    pub src_addr: ShortAddr,
+    /// Success 0 or Failure 1
+    pub status: u8,
+    pub query_addr: ShortAddr,
+    /// Array of bytes contains the complex descriptor
+    pub complex_descriptor: Vec<u8>,
+}
+impl AreqIn for ComplexDescRsp {
+    const SUBSYS: Subsys = Subsys::ZDO;
+    const CMD_ID: u8 = 0x87;
 }
 
 ///ZDO_MGMT_PERMIT_JOIN_REQ
@@ -181,7 +299,7 @@ pub struct EndDevAnnce {
     pub src_addr: ShortAddr,
     pub nwk_addr: ShortAddr,
     pub ieee_addr: IEEEAddr,
-    pub capabilities: u8,
+    pub capabilities: u8, // TODO: Decode bitflags
 }
 impl AreqIn for EndDevAnnce {
     const SUBSYS: Subsys = Subsys::ZDO;
@@ -242,7 +360,10 @@ pub enum In {
     MgmtPermitJoinRsp(MgmtPermitJoinRsp),
     MgmtPermitJoinInd(MgmtPermitJoinInd),
     NodeDescRsp(NodeDescRsp),
+    PowerDescRsp(PowerDescRsp),
+    SimpleDescRsp(SimpleDescRsp),
     ActiveEpRsp(ActiveEpRsp),
+    ComplexDescRsp(ComplexDescRsp),
     StateChange(StateChange),
     SourceRoute(SourceRoute),
     EndDevAnnce(EndDevAnnce),
@@ -255,7 +376,10 @@ impl In {
             MgmtPermitJoinRsp::CMD_ID => Ok(In::MgmtPermitJoinRsp(cmd.parse()?)),
             MgmtPermitJoinInd::CMD_ID => Ok(In::MgmtPermitJoinInd(cmd.parse()?)),
             NodeDescRsp::CMD_ID => Ok(In::NodeDescRsp(cmd.parse()?)),
+            PowerDescRsp::CMD_ID => Ok(In::PowerDescRsp(cmd.parse()?)),
+            SimpleDescRsp::CMD_ID => Ok(In::SimpleDescRsp(cmd.parse()?)),
             ActiveEpRsp::CMD_ID => Ok(In::ActiveEpRsp(cmd.parse()?)),
+            ComplexDescRsp::CMD_ID => Ok(In::ComplexDescRsp(cmd.parse()?)),
             StateChange::CMD_ID => Ok(In::StateChange(cmd.parse()?)),
             SourceRoute::CMD_ID => Ok(In::SourceRoute(cmd.parse()?)),
             EndDevAnnce::CMD_ID => Ok(In::EndDevAnnce(cmd.parse()?)),

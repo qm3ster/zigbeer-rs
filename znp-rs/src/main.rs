@@ -14,42 +14,105 @@ mod znp;
 
 use futures::stream::StreamExt;
 
+use cmd::types::ShortAddr;
+
 #[tokio::main]
 async fn main() {
-    let (mut znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
+    let (znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
+    let znp = std::sync::Arc::new(futures::lock::Mutex::new(znp));
+    let znp2 = znp.clone();
+    let (close_tx, mut close_rx) = tokio::sync::mpsc::channel::<()>(1);
     tokio::spawn(async {
         let mut rec = rec;
+        let znp = znp2;
+        let _close_tx = close_tx;
         while let Some(areq) = rec.next().await {
             println!("AREQ: {:x?}", &areq);
-            if let cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) = areq {
-                use bytes::IntoBuf;
-                let frame = zcl::frame::ZclFrame::parse(incoming.data.into_buf());
-                println!("ZclFrame: {:x?}", frame);
-                let cluster = zcl::clusters::ClusterId::from(incoming.cluster);
-                println!("Cluster: {:x?}", cluster);
-                if let Ok(cluster) = cluster {
-                    let msg = zcl::clusters::In::parse(cluster, frame);
-                    println!("{:x?}", msg);
-                }
+            if let Some(sender) = areq.sender() {
+                println!("Sender: {:x?}", sender);
             }
+            match areq {
+                cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) => {
+                    use bytes::IntoBuf;
+                    let frame = zcl::frame::ZclFrame::parse(incoming.data.into_buf());
+                    println!("ZclFrame: {:x?}", frame);
+                    let cluster = zcl::clusters::ClusterId::from(incoming.cluster);
+                    println!("Cluster: {:x?}", cluster);
+                    if let Ok(cluster) = cluster {
+                        let msg = zcl::clusters::In::parse(cluster, frame);
+                        println!("{:x?}", msg);
+                    }
+                }
+                cmd::Areq::Zdo(cmd::zdo::In::EndDevAnnce(announcement)) => {
+                    // tokio::timer::delay_for(std::time::Duration::from_millis(100)).await;
+                    let mut znp = znp.lock().await;
+                    interrogate(&mut znp, announcement.nwk_addr).await;
+                }
+                _ => {}
+            };
         }
     });
 
-    init_coord::init(&mut znp).await;
-
-    use cmd::sys::StartTimer;
-    for timer_id in 0..=3 {
-        let cmd = StartTimer {
-            timer_id,
-            timeout: 50 - 10 * timer_id as u16,
-        };
-        let res = znp.sreq(cmd).await;
-        println!("StartTimer {:x?}", res);
+    {
+        let mut znp = znp.lock().await;
+        init_coord::init(&mut znp).await;
     }
+    close_rx.next().await;
+
+    // use cmd::sys::StartTimer;
+    // for timer_id in 0..=3 {
+    //     let cmd = StartTimer {
+    //         timer_id,
+    //         timeout: 50 - 10 * timer_id as u16,
+    //     };
+    //     let res = znp.sreq(cmd).await;
+    //     println!("StartTimer {:x?}", res);
+    // }
 
     // init_coord::soft_reset(&mut znp).await;
 
-    blink_forever(&mut znp).await;
+    // blink_forever(&mut znp).await;
+}
+
+async fn interrogate(znp: &mut znp::Sender, device: ShortAddr) {
+    use cmd::types::Endpoint;
+
+    {
+        let cmd = cmd::zdo::PowerDescReq {
+            dest_addr: device,
+            query_addr: device,
+        };
+        let res = znp.sreq(cmd).await;
+        println!("PowerDescReq {:x?}", res);
+    }
+
+    {
+        let cmd = cmd::zdo::ActiveEpReq {
+            dest_addr: device,
+            query_addr: device,
+        };
+        let res = znp.sreq(cmd).await;
+        println!("ActiveEpReq {:x?}", res);
+    }
+
+    {
+        let cmd = cmd::zdo::SimpleDescReq {
+            dest_addr: device,
+            query_addr: device,
+            endpoint: Endpoint(1),
+        };
+        let res = znp.sreq(cmd).await;
+        println!("SimpleDescReq {:x?}", res);
+    }
+
+    {
+        let cmd = cmd::zdo::ComplexDescReq {
+            dest_addr: device,
+            query_addr: device,
+        };
+        let res = znp.sreq(cmd).await;
+        println!("ComplexDescReq {:x?}", res);
+    }
 }
 
 async fn blink_forever(znp: &mut znp::Sender) {

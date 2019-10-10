@@ -1,4 +1,5 @@
 pub mod error;
+use crate::cmd::types::ShortAddr;
 use error::{Error, Result};
 pub mod types;
 
@@ -23,6 +24,12 @@ impl Areq {
             ZDO => Ok(Zdo(zdo::In::from_cmd(cmd)?)),
             AF => Ok(Af(af::In::from_cmd(cmd)?)),
             _ => Err(Error::unimplemented(&cmd)),
+        }
+    }
+    pub fn sender(&self) -> Option<ShortAddr> {
+        match self {
+            Areq::Af(af::In::IncomingMsg(val)) => Some(val.addr),
+            _ => None,
         }
     }
 }
