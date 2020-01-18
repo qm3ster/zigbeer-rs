@@ -1,10 +1,9 @@
 use super::error::{Error, Result};
 use super::types::ShortAddr;
-use crate::areq::{AreqIn, AreqOut};
+use crate::areq::AreqIn;
 use crate::sreq::Sreq;
 use crate::znp_codec::{Subsys, ZnpCmd};
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 
 /// AF_REGISTER
 #[derive(Serialize, Deserialize, Debug, Default)]

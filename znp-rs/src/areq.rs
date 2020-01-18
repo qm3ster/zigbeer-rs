@@ -1,6 +1,6 @@
 use crate::cmd::error::Result;
 use crate::znp_codec::{Subsys, Type, ZnpCmd};
-use bytes::{BufMut, BytesMut};
+use bytes::{buf::BufMutExt, BytesMut};
 use serde::{de::DeserializeOwned, Serialize};
 pub trait AreqIn: DeserializeOwned {
     const SUBSYS: Subsys;

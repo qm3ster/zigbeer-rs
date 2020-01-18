@@ -1,8 +1,7 @@
 use super::super::frame::ZclFrame;
 use super::error::{Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
-
-use bytes::Buf;
+use bytes::buf::{Buf, BufExt};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
@@ -22,10 +21,10 @@ pub enum VarType {
     Struct = 0x4c,
 }
 
-use std::io::{self, BufRead, Read};
+use std::io::{self, BufRead};
 
 impl VarType {
-    fn read<R: BufRead>(&self, reader: &mut R) -> io::Result<VarTypeVal> {
+    fn read<R: BufRead>(self, reader: &mut R) -> io::Result<VarTypeVal> {
         let val = match self {
             VarType::Uint8 => VarTypeVal::Uint8(reader.read_u8()?),
             VarType::Uint16 => VarTypeVal::Uint16(reader.read_u16::<LittleEndian>()?),
@@ -149,7 +148,7 @@ impl In {
             CmdId::DiscoverCmdsRecRsp => {
                 let mut cur = (&mut payload).reader();
                 let discovery_complete = cur.read_u8().unwrap() != 0;
-                let cmd_ids = payload.collect();
+                let cmd_ids = payload.to_bytes().to_vec();
                 Ok(In::DiscoverCmdsRecRsp(DiscoverCmdsRecRsp {
                     discovery_complete,
                     cmd_ids,

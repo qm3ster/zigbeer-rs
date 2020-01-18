@@ -12,14 +12,14 @@ mod zcl;
 
 mod znp;
 
-use futures::stream::StreamExt;
+use futures_util::StreamExt;
 
 use cmd::types::ShortAddr;
 
 #[tokio::main]
 async fn main() {
     let (znp, rec) = znp::Sender::from_path("/dev/ttyACM0");
-    let znp = std::sync::Arc::new(futures::lock::Mutex::new(znp));
+    let znp = std::sync::Arc::new(futures_util::lock::Mutex::new(znp));
     let znp2 = znp.clone();
     let (close_tx, mut close_rx) = tokio::sync::mpsc::channel::<()>(1);
     tokio::spawn(async {
@@ -33,8 +33,7 @@ async fn main() {
             }
             match areq {
                 cmd::Areq::Af(cmd::af::In::IncomingMsg(incoming)) => {
-                    use bytes::IntoBuf;
-                    let frame = zcl::frame::ZclFrame::parse(incoming.data.into_buf());
+                    let frame = zcl::frame::ZclFrame::parse(bytes::Bytes::from(incoming.data));
                     println!("ZclFrame: {:x?}", frame);
                     let cluster = zcl::clusters::ClusterId::from(incoming.cluster);
                     println!("Cluster: {:x?}", cluster);
@@ -137,6 +136,6 @@ async fn blink_forever(znp: &mut znp::Sender) {
             _ => println!("Couldn't toggle light: {:?}", res),
         }
         use std::time::Duration;
-        tokio::timer::delay_for(Duration::from_millis(if on { 1 } else { 4000 })).await;
+        tokio::time::delay_for(Duration::from_millis(if on { 1 } else { 4000 })).await;
     }
 }

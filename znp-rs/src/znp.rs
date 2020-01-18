@@ -2,14 +2,11 @@ use super::areq::AreqOut;
 use super::sreq::Sreq;
 use super::znp_codec;
 use crate::cmd;
-use futures::{
-    future,
-    stream::{self, StreamExt},
-};
+use futures_util::{future, stream, SinkExt, StreamExt};
 use std::path::Path;
 use std::time::Duration;
-use tokio::prelude::*;
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::timeout;
 use tokio_serial::{Serial, SerialPortSettings};
 use znp_codec::{Subsys, ZnpCmd, ZnpCodec};
 
@@ -24,6 +21,7 @@ pub enum SreqError {
 pub enum AreqError {
     IO(std::io::Error),
 }
+#[derive(Debug)]
 struct Callback {
     cb: oneshot::Sender<ZnpCmd>,
     subsys: Subsys,
@@ -35,7 +33,7 @@ enum SendJob {
 }
 async fn receiver(
     cbs_rx: mpsc::Receiver<Callback>,
-    mut sp_rx: stream::SplitStream<tokio::codec::Framed<Serial, ZnpCodec>>,
+    mut sp_rx: futures_util::stream::SplitStream<tokio_util::codec::Framed<Serial, ZnpCodec>>,
     mut areq_tx: mpsc::Sender<crate::cmd::Areq>,
 ) {
     let mut cbs_rx = cbs_rx.filter(|cb| future::ready(!cb.cb.is_closed()));
@@ -49,7 +47,7 @@ async fn receiver(
             Ok(frame) => match frame.typ() {
                 SRSP => {
                     let cb = loop {
-                        match cbs_rx.next().timeout(Duration::from_millis(100)).await {
+                        match timeout(Duration::from_millis(100), cbs_rx.next()).await {
                             Err(err) => {
                                 panic!(err);
                             }
@@ -94,7 +92,7 @@ async fn receiver(
     }
 }
 pub struct Sender {
-    sp_tx: stream::SplitSink<tokio::codec::Framed<Serial, ZnpCodec>, ZnpCmd>,
+    sp_tx: stream::SplitSink<tokio_util::codec::Framed<Serial, ZnpCodec>, ZnpCmd>,
     cbs_tx: mpsc::Sender<Callback>,
 }
 impl Sender {
@@ -107,7 +105,7 @@ impl Sender {
             ..Default::default() // 8-N-1 is default
         };
         let sp = Serial::from_path(path, &sp_settings).unwrap();
-        let sp = tokio::codec::Framed::new(sp, ZnpCodec);
+        let sp = tokio_util::codec::Framed::new(sp, ZnpCodec);
         let (cbs_tx, cbs_rx) = mpsc::channel::<Callback>(2);
         let (areq_tx, areq_rx) = mpsc::channel::<crate::cmd::Areq>(1);
         let (sp_tx, sp_rx) = sp.split();
@@ -127,12 +125,12 @@ impl Sender {
         };
         self.cbs_tx.send(cb).await.expect("receiver gone");
         self.sp_tx.send(frame).await.expect("SREQ send IO error");
-        let cb_rx = cb_rx.timeout(Duration::from_millis(1000));
+        let cb_rx = timeout(Duration::from_millis(1000), cb_rx);
         let srsp = cb_rx
             .await
             .map_err(|err| SreqError::TimedOut)?
             .map_err(|err| SreqError::SerialPortGone)?;
-        let srsp = S::parse_res(srsp).map_err(|err| SreqError::BadResponse(From::from(err)))?;
+        let srsp = S::parse_res(srsp).map_err(SreqError::BadResponse)?;
         Ok(srsp)
     }
     pub async fn areq<A>(&mut self, req: A)

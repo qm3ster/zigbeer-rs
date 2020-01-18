@@ -43,7 +43,7 @@ impl ZclFrame {
             manufacturer_code: if ms { Some(buf.get_u16_le()) } else { None },
             trans_seq_num: buf.get_u8(),
             cmd_id: buf.get_u8(),
-            payload: buf.collect(),
+            payload: buf.to_bytes().to_vec(),
         }
     }
 }

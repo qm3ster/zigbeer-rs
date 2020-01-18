@@ -1,9 +1,9 @@
-use bytes::{BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use serde::de::DeserializeOwned;
 use std::io;
-use tokio::codec::{Decoder, Encoder};
+use tokio_util::codec::{Decoder, Encoder};
 
 const SOF: u8 = 0xFE;
 
@@ -133,14 +133,14 @@ impl Encoder for ZnpCodec {
             ));
         }
         buf.reserve(length + 5);
-        buf.put(SOF);
-        buf.put::<u8>(length as u8);
+        buf.put_u8(SOF);
+        buf.put_u8(length as u8);
         let cmd0 = typ as u8 + subsys as u8;
-        buf.put(cmd0);
+        buf.put_u8(cmd0);
         let cmd1 = cmd_id;
-        buf.put(cmd1);
+        buf.put_u8(cmd1);
         buf.put(body);
-        buf.put(xor(&buf[1..buf.len()]));
+        buf.put_u8(xor(&buf[1..buf.len()]));
         Ok(())
     }
 }
